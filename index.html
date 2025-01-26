@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 24px; /* FONT ULTERIORMENTE INGRANDITO */
+      font-size: 24px;  /* aumenta dimensione base */
       margin: 0;
       padding: 20px;
       background-color: #f5f5f5;
@@ -42,9 +42,12 @@
       margin-bottom: 8px;
     }
     .input-row input {
-      width: 100px;
-      padding: 8px;
-      font-size: 20px;
+      width: 110px;
+      padding: 10px;
+      font-size: 24px; /* ingrandisce i campi di input */
+    }
+    input[type="number"] {
+      font-size: 24px; /* ulteriore garanzia di font grande */
     }
     table {
       width: 100%;
@@ -55,7 +58,7 @@
       border: 1px solid #ddd;
       padding: 12px;
       text-align: center;
-      font-size: 20px;
+      font-size: 24px; /* ingrandisce testo tabella */
     }
     th {
       background: #2c3e50;
@@ -77,7 +80,7 @@
       color: white;
       font-weight: bold;
       position: relative;
-      font-size: 20px;
+      font-size: 24px; /* ingrandisce testo dentro i segmenti */
     }
     .sfrido {
       background: #ff4444 !important;
@@ -88,7 +91,10 @@
       padding: 3px 8px;
       border-radius: 4px;
       margin-right: 5px;
-      font-size: 20px;
+      font-size: 24px; /* ingrandisce testo badge */
+    }
+    button {
+      font-size: 24px; /* ingrandisce testo pulsanti */
     }
   </style>
 </head>
@@ -111,10 +117,10 @@
       </div>
     </div>
 
-    <button onclick="calculate()" style="margin-bottom:10px; padding:15px 25px; width:100%; font-size:20px;">
+    <button onclick="calculate()" style="margin-bottom:10px; padding:15px 25px; width:100%;">
       Calcola Ottimizzazione
     </button>
-    <button onclick="clearCuts()" style="margin-bottom:20px; padding:15px 25px; width:100%; background:#ccc; font-size:20px;">
+    <button onclick="clearCuts()" style="margin-bottom:20px; padding:15px 25px; width:100%; background:#ccc;">
       Cancella Tagli
     </button>
 
@@ -178,7 +184,7 @@
         }
       });
 
-      cuts.sort((a,b) => b-a);
+      cuts.sort((a,b) => b - a);
 
       const bars = [];
       for(const piece of cuts) {
@@ -241,7 +247,7 @@
         const label = document.createElement('div');
         label.style.position = 'absolute';
         label.style.left = '0';
-        label.style.top = '-25px';
+        label.style.top = '-30px';
         label.innerHTML = `<span class="badge">N° ${bar.count}</span>`;
         barDiv.appendChild(label);
 
