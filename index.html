@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 18px;
+      font-size: 20px; /* FONT INGRANDITO */
       margin: 0;
       padding: 20px;
       background-color: #f5f5f5;
@@ -43,7 +43,8 @@
     }
     .input-row input {
       width: 100px;
-      padding: 5px;
+      padding: 7px; /* un po' più alto per maggiore visibilità */
+      font-size: 18px; /* ingrandisce il testo nei campi */
     }
     table {
       width: 100%;
@@ -107,8 +108,12 @@
       </div>
     </div>
 
-    <button onclick="calculate()" style="margin-bottom:20px; padding:12px 25px; width:100%">
+    <!-- Pulsanti -->
+    <button onclick="calculate()" style="margin-bottom:10px; padding:12px 25px; width:100%">
       Calcola Ottimizzazione
+    </button>
+    <button onclick="clearCuts()" style="margin-bottom:20px; padding:12px 25px; width:100%; background:#ccc;">
+      Cancella Tagli
     </button>
 
     <h2>Tagli Richiesti:</h2>
@@ -149,6 +154,7 @@
       }
     };
 
+    // Funzione per calcolare
     function calculate() {
       // Pulizia output
       document.getElementById('sviluppoTable').innerHTML = `
@@ -178,29 +184,21 @@
       // Ordina i tagli in ordine decrescente
       cuts.sort((a, b) => b - a);
 
-      // Creiamo un array di barre (First-Fit Decreasing)
-      // Ogni barra avrà { used, pieces:[] }
-      // used = lunghezza effettivamente occupata (compreso intestatura e spessori)
+      // Creiamo un array di barre con First-Fit Decreasing
       const bars = [];
-
       for(const piece of cuts) {
         let placed = false;
-        // Tenta di metterlo nelle barre esistenti
         for(const bar of bars) {
-          // Se non ci sono pezzi in questa barra, spessore=0, altrimenti spessore = bladeThickness
+          // Se non ci sono pezzi, niente spessore, altrimenti spessore = bladeThickness
           const extra = (bar.pieces.length > 0) ? bladeThickness : 0;
-          // Controllo se ci sta
           if(bar.used + extra + piece <= barLength) {
-            // Lo piazzo
             bar.pieces.push(piece);
             bar.used += extra + piece;
             placed = true;
             break;
           }
         }
-        // Se non è stato messo, creo una nuova barra
         if(!placed) {
-          // La barra parte con "used" = intestatura + primo pezzo
           bars.push({ 
             used: header + piece, 
             pieces: [piece] 
@@ -208,11 +206,10 @@
         }
       }
 
-      // Raggruppiamo le barre identiche (stesso set di pezzi e stesso spreco)
+      // Raggruppiamo barre identiche (stessi pezzi e stesso spreco)
       const grouped = [];
       for(const bar of bars) {
-        // Chiave = stringa dei tagli + sfrido
-        const waste = barLength - bar.used < 0 ? 0 : (barLength - bar.used);
+        const waste = (barLength - bar.used < 0) ? 0 : (barLength - bar.used);
         const key = bar.pieces.join(',') + '|' + waste;
         const found = grouped.find(x => x.key === key);
         if(found) {
@@ -245,12 +242,10 @@
       const grafica = document.getElementById('graficaContainer');
       const scaleFactor = 100 / barLength; 
       for(const bar of grouped) {
-        // Creiamo una "barra-grafica" per ogni configurazione
         const barDiv = document.createElement('div');
         barDiv.className = 'barra-grafica';
         barDiv.style.marginBottom = '30px';
 
-        // Label con "N° count"
         const label = document.createElement('div');
         label.style.position = 'absolute';
         label.style.left = '0';
@@ -258,30 +253,29 @@
         label.innerHTML = `<span class="badge">N° ${bar.count}</span>`;
         barDiv.appendChild(label);
 
-        // Per prima cosa aggiungiamo un segmentino di intestatura (solo grafico)
+        // Intestatura grafica
         if(header > 0) {
           const headDiv = document.createElement('div');
           headDiv.className = 'segmento';
           const headW = header * scaleFactor;
           headDiv.style.width = headW < 3 ? '3%' : `${headW}%`; 
-          headDiv.style.background = '#0066cc'; // blu
-          headDiv.innerText = header; // solo numero
+          headDiv.style.background = '#0066cc'; 
+          headDiv.innerText = header; 
           barDiv.appendChild(headDiv);
         }
 
-        // Ora aggiungiamo i pezzi e i tagli lama
         for(let i=0; i<bar.pieces.length; i++){
           const piece = bar.pieces[i];
           const pieceDiv = document.createElement('div');
           pieceDiv.className = 'segmento';
           let pieceW = piece * scaleFactor;
-          if(pieceW < 3) pieceW = 3; // larghezza minima
+          if(pieceW < 3) pieceW = 3; 
           pieceDiv.style.width = `${pieceW}%`;
-          pieceDiv.innerText = piece; // solo numero
+          pieceDiv.innerText = piece; 
           barDiv.appendChild(pieceDiv);
 
+          // Lama
           if(i < bar.pieces.length - 1) {
-            // Disegno lama
             const lamaDiv = document.createElement('div');
             lamaDiv.className = 'segmento';
             lamaDiv.style.backgroundColor = '#333'; 
@@ -293,19 +287,27 @@
           }
         }
 
-        // Infine sfrido
+        // Sfrido
         if(bar.waste > 0) {
           const wasteDiv = document.createElement('div');
           wasteDiv.className = 'segmento sfrido';
           let wWidth = bar.waste * scaleFactor;
           if(wWidth < 3) wWidth = 3;
           wasteDiv.style.width = `${wWidth}%`;
-          wasteDiv.innerText = bar.waste; // solo numero
+          wasteDiv.innerText = bar.waste;
           barDiv.appendChild(wasteDiv);
         }
 
         grafica.appendChild(barDiv);
       }
+    }
+
+    // Funzione per cancellare i tagli (qty e lunghezza) senza toccare i parametri
+    function clearCuts() {
+      document.querySelectorAll('.input-row').forEach(row => {
+        row.querySelector('input[type="number"]:first-child').value = '';
+        row.querySelector('input[type="number"]:last-child').value = '';
+      });
     }
   </script>
 </body>
