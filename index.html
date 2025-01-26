@@ -6,7 +6,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 20px;
+      font-size: 24px; /* FONT ULTERIORMENTE INGRANDITO */
       margin: 0;
       padding: 20px;
       background-color: #f5f5f5;
@@ -43,8 +43,8 @@
     }
     .input-row input {
       width: 100px;
-      padding: 7px;
-      font-size: 18px;
+      padding: 8px;
+      font-size: 20px;
     }
     table {
       width: 100%;
@@ -53,8 +53,9 @@
     }
     th, td {
       border: 1px solid #ddd;
-      padding: 10px;
+      padding: 12px;
       text-align: center;
+      font-size: 20px;
     }
     th {
       background: #2c3e50;
@@ -62,7 +63,7 @@
     }
     .barra-grafica {
       display: flex;
-      height: 40px;
+      height: 50px;
       margin: 15px 0;
       border: 2px solid #333;
       position: relative;
@@ -76,6 +77,7 @@
       color: white;
       font-weight: bold;
       position: relative;
+      font-size: 20px;
     }
     .sfrido {
       background: #ff4444 !important;
@@ -86,6 +88,7 @@
       padding: 3px 8px;
       border-radius: 4px;
       margin-right: 5px;
+      font-size: 20px;
     }
   </style>
 </head>
@@ -108,11 +111,10 @@
       </div>
     </div>
 
-    <!-- Pulsanti -->
-    <button onclick="calculate()" style="margin-bottom:10px; padding:12px 25px; width:100%">
+    <button onclick="calculate()" style="margin-bottom:10px; padding:15px 25px; width:100%; font-size:20px;">
       Calcola Ottimizzazione
     </button>
-    <button onclick="clearCuts()" style="margin-bottom:20px; padding:12px 25px; width:100%; background:#ccc;">
+    <button onclick="clearCuts()" style="margin-bottom:20px; padding:15px 25px; width:100%; background:#ccc; font-size:20px;">
       Cancella Tagli
     </button>
 
@@ -140,7 +142,6 @@
   </div>
 
   <script>
-    // Genera 30 righe di input all'avvio
     window.onload = function() {
       const container = document.getElementById('cutsContainer');
       for(let i = 0; i < 30; i++) {
@@ -154,10 +155,7 @@
       }
     };
 
-    // Calcolo con algoritmo First-Fit Decreasing, considerando l'intestatura
-    // ma non disegnandola nella barra
     function calculate() {
-      // Pulizia risultati
       document.getElementById('sviluppoTable').innerHTML = `
         <tr>
           <th>N° barre</th>
@@ -167,31 +165,26 @@
         </tr>`;
       document.getElementById('graficaContainer').innerHTML = '';
 
-      // Legge parametri
       const barLength = parseInt(document.getElementById('barLength').value) || 0;
       const bladeThickness = parseInt(document.getElementById('bladeThickness').value) || 0;
       const header = parseInt(document.getElementById('header').value) || 0;
 
-      // Legge tagli richiesti
       const cuts = [];
       document.querySelectorAll('.input-row').forEach(row => {
         const qty = parseInt(row.querySelector('input[type="number"]:first-child').value) || 0;
         const len = parseInt(row.querySelector('input[type="number"]:last-child').value) || 0;
-        for(let i=0; i < qty; i++){
+        for(let i = 0; i < qty; i++) {
           cuts.push(len);
         }
       });
 
-      // Ordina i pezzi dal più grande al più piccolo
-      cuts.sort((a,b) => b - a);
+      cuts.sort((a,b) => b-a);
 
-      // Creo array di barre
       const bars = [];
       for(const piece of cuts) {
         let placed = false;
         for(const bar of bars) {
-          // Se la barra ha già pezzi, aggiungiamo spessore
-          const extra = bar.pieces.length > 0 ? bladeThickness : 0;
+          const extra = (bar.pieces.length > 0) ? bladeThickness : 0;
           if(bar.used + extra + piece <= barLength) {
             bar.pieces.push(piece);
             bar.used += extra + piece;
@@ -200,7 +193,6 @@
           }
         }
         if(!placed) {
-          // La prima volta usiamo intestatura nel calcolo, ma non la disegniamo
           bars.push({
             used: header + piece,
             pieces: [piece]
@@ -208,7 +200,6 @@
         }
       }
 
-      // Raggruppo barre identiche (stessi pezzi e stesso spreco)
       const grouped = [];
       for(const bar of bars) {
         const waste = Math.max(0, barLength - bar.used);
@@ -227,7 +218,6 @@
         }
       }
 
-      // Stampa a tabella
       for(const bar of grouped) {
         const wastePerc = barLength > 0 ? ((bar.waste / barLength)*100).toFixed(1) : 0;
         const tr = document.createElement('tr');
@@ -240,7 +230,6 @@
         document.getElementById('sviluppoTable').appendChild(tr);
       }
 
-      // Disegna la barra (senza intestatura)
       const grafica = document.getElementById('graficaContainer');
       const scaleFactor = barLength > 0 ? (100 / barLength) : 0;
 
@@ -249,7 +238,6 @@
         barDiv.className = 'barra-grafica';
         barDiv.style.marginBottom = '30px';
 
-        // Badge per quantità
         const label = document.createElement('div');
         label.style.position = 'absolute';
         label.style.left = '0';
@@ -257,18 +245,16 @@
         label.innerHTML = `<span class="badge">N° ${bar.count}</span>`;
         barDiv.appendChild(label);
 
-        // Aggiungo i pezzi e lo spessore lama, ma NON la intestatura
         for(let i=0; i<bar.pieces.length; i++){
           const piece = bar.pieces[i];
           let pieceW = piece * scaleFactor;
-          if(pieceW < 3) pieceW = 3;  // larghezza minima
+          if(pieceW < 3) pieceW = 3;
           const pieceDiv = document.createElement('div');
           pieceDiv.className = 'segmento';
           pieceDiv.style.width = pieceW + '%';
-          pieceDiv.innerText = piece;  // solo numero
+          pieceDiv.innerText = piece;
           barDiv.appendChild(pieceDiv);
 
-          // Lama
           if(i < bar.pieces.length - 1) {
             let lamaW = bladeThickness * scaleFactor;
             if(lamaW < 1) lamaW = 1;
@@ -281,14 +267,13 @@
           }
         }
 
-        // Sfrido finale
         if(bar.waste > 0) {
           let wWaste = bar.waste * scaleFactor;
           if(wWaste < 3) wWaste = 3;
           const wasteDiv = document.createElement('div');
           wasteDiv.className = 'segmento sfrido';
           wasteDiv.style.width = wWaste + '%';
-          wasteDiv.innerText = bar.waste;  // solo numero
+          wasteDiv.innerText = bar.waste;
           barDiv.appendChild(wasteDiv);
         }
 
@@ -296,7 +281,6 @@
       }
     }
 
-    // Cancella i soli tagli, senza toccare parametri
     function clearCuts() {
       document.querySelectorAll('.input-row').forEach(row => {
         row.querySelector('input[type="number"]:first-child').value = '';
