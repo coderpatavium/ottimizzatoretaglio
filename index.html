@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Ottimizzatore Taglio Barre</title>
+  <title>Ottimizzatore Taglio Barre - First-Fit Decreasing</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -123,7 +123,7 @@
       <table id="sviluppoTable">
         <tr>
           <th>N° barre</th>
-          <th>MI usati</th>
+          <th>ML usati</th>
           <th>Sfrido</th>
           <th>Tagli</th>
         </tr>
@@ -135,6 +135,7 @@
   </div>
 
   <script>
+    // Genera 30 righe input all'avvio
     window.onload = function() {
       const container = document.getElementById('cutsContainer');
       for(let i = 0; i < 30; i++) {
@@ -149,20 +150,22 @@
     };
 
     function calculate() {
+      // Pulizia output
       document.getElementById('sviluppoTable').innerHTML = `
         <tr>
           <th>N° barre</th>
-          <th>MI usati</th>
+          <th>ML usati</th>
           <th>Sfrido</th>
           <th>Tagli</th>
         </tr>`;
       document.getElementById('graficaContainer').innerHTML = '';
 
+      // Legge parametri
       const barLength = parseInt(document.getElementById('barLength').value);
       const bladeThickness = parseInt(document.getElementById('bladeThickness').value);
       const header = parseInt(document.getElementById('header').value);
-      const usableLength = barLength - header;
 
+      // Legge i tagli richiesti
       const cuts = [];
       document.querySelectorAll('.input-row').forEach(row => {
         const qty = parseInt(row.querySelector('input[type="number"]:first-child').value) || 0;
@@ -172,109 +175,137 @@
         }
       });
 
+      // Ordina i tagli in ordine decrescente
       cuts.sort((a, b) => b - a);
+
+      // Creiamo un array di barre (First-Fit Decreasing)
+      // Ogni barra avrà { used, pieces:[] }
+      // used = lunghezza effettivamente occupata (compreso intestatura e spessori)
       const bars = [];
 
-      while(cuts.length > 0) {
-        let bestCombination = null;
-        let bestWaste = usableLength;
-        for(let i = 1; i <= cuts.length; i++) {
-          const combo = cuts.slice(0, i);
-          const totalLen = combo.reduce((a,b)=>a+b,0) + ((combo.length - 1)*bladeThickness);
-          const waste = usableLength - totalLen;
-          if(waste >= 0 && waste < bestWaste) {
-            bestCombination = combo;
-            bestWaste = waste;
+      for(const piece of cuts) {
+        let placed = false;
+        // Tenta di metterlo nelle barre esistenti
+        for(const bar of bars) {
+          // Se non ci sono pezzi in questa barra, spessore=0, altrimenti spessore = bladeThickness
+          const extra = (bar.pieces.length > 0) ? bladeThickness : 0;
+          // Controllo se ci sta
+          if(bar.used + extra + piece <= barLength) {
+            // Lo piazzo
+            bar.pieces.push(piece);
+            bar.used += extra + piece;
+            placed = true;
+            break;
           }
         }
-        if(bestCombination) {
-          bars.push({
-            cuts: bestCombination,
-            totalSpace: bestCombination.reduce((a, b) => a + b, 0) + ((bestCombination.length - 1) * bladeThickness),
-            waste: bestWaste,
-            count: 1
+        // Se non è stato messo, creo una nuova barra
+        if(!placed) {
+          // La barra parte con "used" = intestatura + primo pezzo
+          bars.push({ 
+            used: header + piece, 
+            pieces: [piece] 
           });
-          bestCombination.forEach(c => {
-            const idx = cuts.indexOf(c);
-            if(idx !== -1) cuts.splice(idx, 1);
-          });
-        } else {
-          bars.push({
-            cuts: [cuts[0]],
-            totalSpace: cuts[0],
-            waste: usableLength - cuts[0],
-            count: 1
-          });
-          cuts.shift();
         }
       }
 
-      const groupedBars = [];
-      bars.forEach(bar => {
-        const key = bar.cuts.join(',') + '|' + bar.waste;
-        const existing = groupedBars.find(b => b.key === key);
-        if(existing) {
-          existing.count++;
+      // Raggruppiamo le barre identiche (stesso set di pezzi e stesso spreco)
+      const grouped = [];
+      for(const bar of bars) {
+        // Chiave = stringa dei tagli + sfrido
+        const waste = barLength - bar.used < 0 ? 0 : (barLength - bar.used);
+        const key = bar.pieces.join(',') + '|' + waste;
+        const found = grouped.find(x => x.key === key);
+        if(found) {
+          found.count++;
         } else {
-          groupedBars.push({...bar, key: key, count: 1});
+          grouped.push({
+            pieces: bar.pieces,
+            used: bar.used,
+            waste,
+            key,
+            count: 1
+          });
         }
-      });
+      }
 
-      groupedBars.forEach((bar, index) => {
+      // Output tabella
+      for(const bar of grouped) {
         const row = document.createElement('tr');
+        const wastePerc = barLength > 0 ? ((bar.waste / barLength)*100).toFixed(1) : 0;
         row.innerHTML = `
           <td>${bar.count}</td>
-          <td>${bar.totalSpace + header}</td>
-          <td>${bar.waste}mm (${((bar.waste / usableLength)*100).toFixed(1)}%)</td>
-          <td>${bar.cuts.join(' – ')}</td>
+          <td>${bar.used}</td>
+          <td>${bar.waste}mm (${wastePerc}%)</td>
+          <td>${bar.pieces.join(' – ')}</td>
         `;
         document.getElementById('sviluppoTable').appendChild(row);
+      }
 
-        const barraDiv = document.createElement('div');
-        barraDiv.className = 'barra-grafica';
-        barraDiv.style.marginBottom = '30px';
+      // Disegno grafico
+      const grafica = document.getElementById('graficaContainer');
+      const scaleFactor = 100 / barLength; 
+      for(const bar of grouped) {
+        // Creiamo una "barra-grafica" per ogni configurazione
+        const barDiv = document.createElement('div');
+        barDiv.className = 'barra-grafica';
+        barDiv.style.marginBottom = '30px';
 
-        const scala = 100 / usableLength;
-        
-        bar.cuts.forEach((taglio, i) => {
-          const widthPerc = taglio * scala;
-          const segmento = document.createElement('div');
-          segmento.className = 'segmento';
-          const finalWidth = Math.max(widthPerc, 3); // min 3% per visibilità
-          segmento.style.width = `${finalWidth}%`;
-          segmento.innerText = taglio; // solo numero
-          barraDiv.appendChild(segmento);
-
-          if(i < bar.cuts.length - 1) {
-            const lama = document.createElement('div');
-            lama.className = 'segmento';
-            lama.style.backgroundColor = '#333';
-            const lw = bladeThickness * scala;
-            lama.style.width = lw < 1 ? '1%' : `${lw}%`; // min 1% per lama
-            lama.innerText = '';
-            barraDiv.appendChild(lama);
-          }
-        });
-
-        if(bar.waste > 0) {
-          const wasteWidthPerc = bar.waste * scala;
-          const wasteDiv = document.createElement('div');
-          wasteDiv.className = 'segmento sfrido';
-          const finalW = Math.max(wasteWidthPerc, 3);
-          wasteDiv.style.width = `${finalW}%`;
-          wasteDiv.innerText = bar.waste; // solo numero
-          barraDiv.appendChild(wasteDiv);
-        }
-
+        // Label con "N° count"
         const label = document.createElement('div');
         label.style.position = 'absolute';
         label.style.left = '0';
         label.style.top = '-25px';
         label.innerHTML = `<span class="badge">N° ${bar.count}</span>`;
-        barraDiv.appendChild(label);
+        barDiv.appendChild(label);
 
-        document.getElementById('graficaContainer').appendChild(barraDiv);
-      });
+        // Per prima cosa aggiungiamo un segmentino di intestatura (solo grafico)
+        if(header > 0) {
+          const headDiv = document.createElement('div');
+          headDiv.className = 'segmento';
+          const headW = header * scaleFactor;
+          headDiv.style.width = headW < 3 ? '3%' : `${headW}%`; 
+          headDiv.style.background = '#0066cc'; // blu
+          headDiv.innerText = header; // solo numero
+          barDiv.appendChild(headDiv);
+        }
+
+        // Ora aggiungiamo i pezzi e i tagli lama
+        for(let i=0; i<bar.pieces.length; i++){
+          const piece = bar.pieces[i];
+          const pieceDiv = document.createElement('div');
+          pieceDiv.className = 'segmento';
+          let pieceW = piece * scaleFactor;
+          if(pieceW < 3) pieceW = 3; // larghezza minima
+          pieceDiv.style.width = `${pieceW}%`;
+          pieceDiv.innerText = piece; // solo numero
+          barDiv.appendChild(pieceDiv);
+
+          if(i < bar.pieces.length - 1) {
+            // Disegno lama
+            const lamaDiv = document.createElement('div');
+            lamaDiv.className = 'segmento';
+            lamaDiv.style.backgroundColor = '#333'; 
+            let lamaW = bladeThickness * scaleFactor;
+            if(lamaW < 1) lamaW = 1; 
+            lamaDiv.style.width = `${lamaW}%`; 
+            lamaDiv.innerText = '';
+            barDiv.appendChild(lamaDiv);
+          }
+        }
+
+        // Infine sfrido
+        if(bar.waste > 0) {
+          const wasteDiv = document.createElement('div');
+          wasteDiv.className = 'segmento sfrido';
+          let wWidth = bar.waste * scaleFactor;
+          if(wWidth < 3) wWidth = 3;
+          wasteDiv.style.width = `${wWidth}%`;
+          wasteDiv.innerText = bar.waste; // solo numero
+          barDiv.appendChild(wasteDiv);
+        }
+
+        grafica.appendChild(barDiv);
+      }
     }
   </script>
 </body>
