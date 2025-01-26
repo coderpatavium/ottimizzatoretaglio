@@ -1,0 +1,156 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ottimizzatore Taglio Barre</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    .barra { margin-top: 10px; display: flex; align-items: center; }
+    .pezzo, .lama, .intest {
+      height: 20px;
+      border: 1px solid #000;
+      display: inline-block;
+    }
+    .pezzo { background-color: limegreen; }
+    .lama { background-color: yellow; }
+    .intest { background-color: blue; }
+  </style>
+</head>
+<body>
+<h1>Ottimizzatore di Taglio Barre</h1>
+
+<label>Lunghezza barra (mm):</label>
+<input type="number" id="lungBarra" value="3100"><br><br>
+
+<label>Spessore lama (mm):</label>
+<input type="number" id="spessoreLama" value="3"><br><br>
+
+<label>Intestatura (mm):</label>
+<input type="number" id="intestatura" value="10"><br><br>
+
+<label>Inserisci quantità e misure (una coppia per riga, es. "3,800"):
+<textarea id="dati" rows="6" cols="30">
+1,400
+2,300
+3,800
+5,700
+</textarea></label><br><br>
+
+<button onclick="ottimizza()">Ottimizza</button>
+
+<h2>Risultati:</h2>
+<div id="risultati"></div>
+
+<script>
+function ottimizza() {
+  const lungBarra = parseInt(document.getElementById('lungBarra').value) || 0;
+  const spessoreLama = parseInt(document.getElementById('spessoreLama').value) || 0;
+  const intestatura = parseInt(document.getElementById('intestatura').value) || 0;
+  
+  const testo = document.getElementById('dati').value.trim();
+  if(!testo) return;
+  
+  let righe = testo.split('\n');
+  let qtaMis = [];
+  for(let r of righe){
+    let parts = r.split(',');
+    if(parts.length===2){
+      let q = parseInt(parts[0]);
+      let m = parseInt(parts[1]);
+      if(q>0 && m>0) qtaMis.push({qta:q, misura:m});
+    }
+  }
+  if(qtaMis.length===0) return;
+  
+  let pezzi = [];
+  qtaMis.forEach(obj=>{
+    for(let i=0; i<obj.qta; i++){
+      pezzi.push(obj.misura);
+    }
+  });
+  
+  pezzi.sort((a,b)=> b-a);
+  
+  let Tagli = [];
+  let Resti = [];
+  let numBarre = 0;
+  
+  function nuovaBarra(mis) {
+    numBarre++;
+    Tagli[numBarre-1] = mis.toString();
+    Resti[numBarre-1] = intestatura + mis;
+  }
+  
+  for(let p of pezzi){
+    let messo = false;
+    for(let i=0; i<numBarre; i++){
+      let spess = (Tagli[i]==="") ? 0 : spessoreLama;
+      if((Resti[i] + spess + p) <= lungBarra){
+        if(Tagli[i]===""){
+          Tagli[i] = p.toString();
+        } else {
+          Tagli[i] += " -- " + p.toString();
+        }
+        Resti[i] += (spess + p);
+        messo = true;
+        break;
+      }
+    }
+    if(!messo){
+      nuovaBarra(p);
+    }
+  }
+  
+  let ris = `<p>Totale barre: ${numBarre}</p>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <tr><th># Barra</th><th>ML usati</th><th>Sfrido</th><th>Sfrido %</th><th>Tagli</th></tr>`;
+  
+  let sommaUsati = 0;
+  for(let i=0; i<numBarre; i++){
+    let mlUsati = Resti[i];
+    let sfrido = lungBarra - mlUsati;
+    if(sfrido<0) sfrido=0;
+    let perc = (lungBarra>0) ? ((sfrido/lungBarra)*100).toFixed(1) : 0;
+    sommaUsati += mlUsati;
+    ris += `<tr>
+      <td>${i+1}</td>
+      <td>${mlUsati}</td>
+      <td>${sfrido}</td>
+      <td>${perc}%</td>
+      <td>${Tagli[i]}</td>
+    </tr>`;
+  }
+  ris += `</table>`;
+  
+  let scartoTot = numBarre*lungBarra - sommaUsati;
+  let scartoPerc = (numBarre*lungBarra>0) ? ((scartoTot/(numBarre*lungBarra))*100).toFixed(1) : 0;
+  ris += `<p>ML totali usati: ${sommaUsati}<br>Sfrido complessivo: ${scartoTot} (${scartoPerc}%)</p>`;
+  
+  ris += `<h3>Disegno barre:</h3>`;
+  let scala = 0.03;
+  
+  for(let i=0; i<numBarre; i++){
+    ris += `<div class="barra">`;
+    // intestatura
+    let wInt = intestatura*scala;
+    ris += `<div class="intest" style="width:${wInt}px"></div>`;
+    
+    let parts = Tagli[i].split('--');
+    for(let k=0; k<parts.length; k++){
+      let len = parseInt(parts[k]);
+      let w = len*scala;
+      ris += `<div class="pezzo" style="width:${w}px"></div>`;
+      if(k<parts.length-1){
+        let lw = spessoreLama*scala;
+        ris += `<div class="lama" style="width:${lw}px"></div>`;
+      }
+    }
+    ris += `</div>`;
+  }
+  
+  document.getElementById('risultati').innerHTML = ris;
+}
+</script>
+</body>
+</html>
