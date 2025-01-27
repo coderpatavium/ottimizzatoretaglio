@@ -2,11 +2,11 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Ottimizzatore Taglio Barre - First-Fit Decreasing</title>
+  <title>Ottimizzatore Taglio Barre - First-Piece-Always-Cut</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      font-size: 24px;  /* aumenta dimensione base */
+      font-size: 24px;
       margin: 0;
       padding: 20px;
       background-color: #f5f5f5;
@@ -19,12 +19,8 @@
       border-radius: 10px;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
-    .input-section {
-      width: 35%;
-    }
-    .output-section {
-      width: 65%;
-    }
+    .input-section { width: 35%; }
+    .output-section { width: 65%; }
     .parametri {
       display: flex;
       flex-direction: column;
@@ -44,10 +40,13 @@
     .input-row input {
       width: 110px;
       padding: 10px;
-      font-size: 24px; /* ingrandisce i campi di input */
+      font-size: 24px;
     }
     input[type="number"] {
-      font-size: 24px; /* ulteriore garanzia di font grande */
+      font-size: 24px;
+    }
+    button {
+      font-size: 24px;
     }
     table {
       width: 100%;
@@ -58,7 +57,7 @@
       border: 1px solid #ddd;
       padding: 12px;
       text-align: center;
-      font-size: 24px; /* ingrandisce testo tabella */
+      font-size: 24px;
     }
     th {
       background: #2c3e50;
@@ -80,7 +79,7 @@
       color: white;
       font-weight: bold;
       position: relative;
-      font-size: 24px; /* ingrandisce testo dentro i segmenti */
+      font-size: 24px;
     }
     .sfrido {
       background: #ff4444 !important;
@@ -91,10 +90,7 @@
       padding: 3px 8px;
       border-radius: 4px;
       margin-right: 5px;
-      font-size: 24px; /* ingrandisce testo badge */
-    }
-    button {
-      font-size: 24px; /* ingrandisce testo pulsanti */
+      font-size: 24px;
     }
   </style>
 </head>
@@ -148,6 +144,7 @@
   </div>
 
   <script>
+    // Genera 30 righe input
     window.onload = function() {
       const container = document.getElementById('cutsContainer');
       for(let i = 0; i < 30; i++) {
@@ -161,7 +158,9 @@
       }
     };
 
+    // Calcolo con la logica "ogni pezzo comporta un taglio lama" (3 pezzi => 3 lame)
     function calculate() {
+      // Pulisce output
       document.getElementById('sviluppoTable').innerHTML = `
         <tr>
           <th>N° barre</th>
@@ -175,6 +174,7 @@
       const bladeThickness = parseInt(document.getElementById('bladeThickness').value) || 0;
       const header = parseInt(document.getElementById('header').value) || 0;
 
+      // Legge i tagli
       const cuts = [];
       document.querySelectorAll('.input-row').forEach(row => {
         const qty = parseInt(row.querySelector('input[type="number"]:first-child').value) || 0;
@@ -184,31 +184,42 @@
         }
       });
 
-      cuts.sort((a,b) => b - a);
+      // Ordina dal più grande
+      cuts.sort((a,b) => b-a);
 
+      // Creiamo le barre: all'inizio used = header
+      // Per OGNI pezzo, sommiamo piece + bladeThickness
+      // Esempio: 3 pezzi => 3 lame => TOT = 3*(piece+bladeThickness) + header
       const bars = [];
       for(const piece of cuts) {
         let placed = false;
         for(const bar of bars) {
-          const extra = (bar.pieces.length > 0) ? bladeThickness : 0;
-          if(bar.used + extra + piece <= barLength) {
+          // Controlla se ci sta
+          if(bar.used + piece + bladeThickness <= barLength) {
+            // Aggiunge
             bar.pieces.push(piece);
-            bar.used += extra + piece;
+            bar.used += piece + bladeThickness;
             placed = true;
             break;
           }
         }
         if(!placed) {
+          // Crea nuova barra
+          // Partiamo da used = header
+          // Subito ci aggiungo piece + bladeThickness
+          const usedInitial = header + piece + bladeThickness;
           bars.push({
-            used: header + piece,
+            used: usedInitial,
             pieces: [piece]
           });
         }
       }
 
+      // Raggruppo barre identiche (stessi pezzi, stesso spreco)
       const grouped = [];
       for(const bar of bars) {
-        const waste = Math.max(0, barLength - bar.used);
+        let waste = barLength - bar.used;
+        if(waste < 0) waste = 0;
         const key = bar.pieces.join(',') + '|' + waste;
         const found = grouped.find(x => x.key === key);
         if(found) {
@@ -224,8 +235,9 @@
         }
       }
 
+      // Tabella
       for(const bar of grouped) {
-        const wastePerc = barLength > 0 ? ((bar.waste / barLength)*100).toFixed(1) : 0;
+        const wastePerc = barLength>0 ? ((bar.waste/barLength)*100).toFixed(1) : 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${bar.count}</td>
@@ -236,8 +248,9 @@
         document.getElementById('sviluppoTable').appendChild(tr);
       }
 
+      // Disegno
       const grafica = document.getElementById('graficaContainer');
-      const scaleFactor = barLength > 0 ? (100 / barLength) : 0;
+      const scaleFactor = barLength>0 ? (100/barLength) : 0;
 
       for(const bar of grouped) {
         const barDiv = document.createElement('div');
@@ -251,38 +264,53 @@
         label.innerHTML = `<span class="badge">N° ${bar.count}</span>`;
         barDiv.appendChild(label);
 
+        let usedSoFar = header; // partiamo con intestatura "sommata" ma non disegnata
         for(let i=0; i<bar.pieces.length; i++){
           const piece = bar.pieces[i];
-          let pieceW = piece * scaleFactor;
-          if(pieceW < 3) pieceW = 3;
+          // Disegno un segmento "pezzo"
+          let pieceW = piece*scaleFactor;
+          if(pieceW<2) pieceW=2; // min larghezza
           const pieceDiv = document.createElement('div');
           pieceDiv.className = 'segmento';
           pieceDiv.style.width = pieceW + '%';
           pieceDiv.innerText = piece;
           barDiv.appendChild(pieceDiv);
 
-          if(i < bar.pieces.length - 1) {
-            let lamaW = bladeThickness * scaleFactor;
-            if(lamaW < 1) lamaW = 1;
+          usedSoFar += piece;
+          
+          // Lama
+          const lamaW = bladeThickness*scaleFactor;
+          if(lamaW<1) {
+            // min 1% se vogliamo vederlo
+          }
+          if(i < bar.pieces.length) {
+            // aggiungo spessore lama dopo OGNI pezzo
+            let lw = (lamaW<1 ? 1 : lamaW);
             const lamaDiv = document.createElement('div');
             lamaDiv.className = 'segmento';
             lamaDiv.style.backgroundColor = '#333';
-            lamaDiv.style.width = lamaW + '%';
+            lamaDiv.style.width = lw + '%';
             lamaDiv.innerText = '';
             barDiv.appendChild(lamaDiv);
+            usedSoFar += bladeThickness;
           }
         }
+        // Rimuoviamo l’ultima lama in eccesso dal disegno (perché l’algoritmo l’ha contata)
+        // Per avere 3 pezzi => 3 tagli, ok. Ma se l’utente ne vuole 3, stando a logica, è giusto.
+        // Se vogliamo vedere la barra "aperta" senza ultima lama, basterebbe bar.pieces.length - 1,
+        // ma l’utente chiede 3 tagli per 3 pezzi, quindi lasciamo.
 
-        if(bar.waste > 0) {
-          let wWaste = bar.waste * scaleFactor;
-          if(wWaste < 3) wWaste = 3;
+        let waste = barLength - bar.used;
+        if(waste<0) waste=0;
+        if(waste>0) {
+          let wasteW = waste*scaleFactor;
+          if(wasteW<2) wasteW=2;
           const wasteDiv = document.createElement('div');
           wasteDiv.className = 'segmento sfrido';
-          wasteDiv.style.width = wWaste + '%';
-          wasteDiv.innerText = bar.waste;
+          wasteDiv.style.width = wasteW + '%';
+          wasteDiv.innerText = waste;
           barDiv.appendChild(wasteDiv);
         }
-
         grafica.appendChild(barDiv);
       }
     }
