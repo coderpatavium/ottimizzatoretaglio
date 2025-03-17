@@ -195,7 +195,7 @@
         let placed = false;
         for(const bar of bars) {
           // Controlla se ci sta
-          if(bar.used + piece + bladeThickness <= barLength) {
+          if(bar.used + piece + (bar.pieces.length > 0 ? bladeThickness : 0) <= barLength) {
             // Aggiunge
             bar.pieces.push(piece);
             bar.used += piece + bladeThickness;
