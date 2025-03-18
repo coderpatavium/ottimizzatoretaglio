@@ -145,7 +145,7 @@
     <div class="parametri">
       <div>
         <h3>MI Barra (mm)</h3>
-        <input type="number" id="barLength" value="3030">
+        <input type="number" id="barLength" value="3020">
       </div>
       <div>
         <h3>Lama (mm)</h3>
@@ -365,10 +365,20 @@
     }
 
     function clearCuts() {
+      // Pulisce i campi di input
       document.querySelectorAll('.input-row').forEach(row => {
         row.querySelector('input[type="number"]:first-child').value = '';
         row.querySelector('input[type="number"]:last-child').value = '';
       });
+      // Pulisce la tabella e la grafica nei risultati
+      document.getElementById('sviluppoTable').innerHTML = `
+        <tr>
+          <th>N° barre</th>
+          <th>ML usati</th>
+          <th>Sfrido</th>
+          <th>Tagli</th>
+        </tr>`;
+      document.getElementById('graficaContainer').innerHTML = '';
     }
 
     // Funzione per avviare la stampa
